@@ -1,0 +1,23 @@
+import React from 'react';
+import { notFound } from 'next/navigation';
+import { TourService } from '@/server/services/tour.service';
+import { HotspotStudio } from '@/components/editor/HotspotStudio';
+
+export default async function TourEditorPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const tour = await TourService.getById(id);
+
+  if (!tour) {
+    notFound();
+  }
+
+  return (
+    <div className="-m-8">
+      <HotspotStudio tourId={id} initialTour={JSON.parse(JSON.stringify(tour))} />
+    </div>
+  );
+}
