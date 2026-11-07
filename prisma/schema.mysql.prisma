@@ -1,0 +1,418 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum TourStatus {
+  DRAFT
+  READY
+  PUBLISHED
+  ARCHIVED
+}
+
+enum TourVisibility {
+  PUBLIC
+  UNLISTED
+  PRIVATE
+}
+
+enum SceneType {
+  OUTDOOR
+  INDOOR
+  TRANSITION
+}
+
+enum HotspotType {
+  NAVIGATION
+  INFORMATION
+  IMAGE
+  VIDEO
+  EXTERNAL_LINK
+  FLOOR_NAVIGATION
+}
+
+enum ExportType {
+  STANDALONE_ZIP
+  PROJECT_BACKUP
+  ORIGINAL_PANORAMAS
+}
+
+enum ExportStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum ProcessingStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum ProjectionType {
+  EQUIRECTANGULAR
+  CUBEMAP
+}
+
+model User {
+  id            String      @id @default(uuid())
+  name          String
+  email         String      @unique
+  passwordHash  String      @map("password_hash")
+  avatar        String?
+  status        UserStatus  @default(ACTIVE)
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+
+  roles         UserRole[]
+  tours         Tour[]
+  auditLogs     AuditLog[]
+  publications  TourPublication[]
+
+  @@map("users")
+}
+
+model Role {
+  id          String           @id @default(uuid())
+  name        String           @unique
+  description String?
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  users       UserRole[]
+  permissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String           @id @default(uuid())
+  key         String           @unique
+  description String?
+
+  roles       RolePermission[]
+
+  @@map("permissions")
+}
+
+model UserRole {
+  userId String @map("user_id")
+  roleId String @map("role_id")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@index([roleId])
+  @@map("user_roles")
+}
+
+model RolePermission {
+  roleId       String @map("role_id")
+  permissionId String @map("permission_id")
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+model Tour {
+  id           String         @id @default(uuid())
+  title        String
+  slug         String         @unique
+  description  String?        @db.Text
+  coverMediaId String?        @map("cover_media_id")
+  startSceneId String?        @map("start_scene_id")
+  status       TourStatus     @default(DRAFT)
+  visibility   TourVisibility @default(PUBLIC)
+  ownerId      String         @map("owner_id")
+  publishedAt  DateTime?      @map("published_at")
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+
+  owner        User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  coverMedia   MediaAsset?    @relation("TourCoverMedia", fields: [coverMediaId], references: [id], onDelete: SetNull)
+  startScene   Scene?         @relation("TourStartScene", fields: [startSceneId], references: [id], onDelete: SetNull)
+
+  scenes       Scene[]        @relation("TourScenes")
+  hotspots     Hotspot[]
+  buildings    Building[]
+  publications TourPublication[]
+  views        TourView[]
+  exportJobs   ExportJob[]
+
+  @@index([ownerId])
+  @@index([status])
+  @@index([visibility])
+  @@index([startSceneId])
+  @@map("tours")
+}
+
+model MediaAsset {
+  id               String           @id @default(uuid())
+  originalFilename String           @map("original_filename")
+  mimeType         String           @map("mime_type")
+  fileSize         Int              @map("file_size")
+  width            Int?
+  height           Int?
+  checksum         String?
+  storageProvider  String           @default("local") @map("storage_provider")
+  storageKey       String           @map("storage_key")
+  thumbnailKey     String?          @map("thumbnail_key")
+  processingStatus ProcessingStatus @default(COMPLETED) @map("processing_status")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+
+  panoramaAsset    PanoramaAsset?
+  tourCovers       Tour[]           @relation("TourCoverMedia")
+  floorPlans       FloorPlan[]
+
+  @@index([storageKey])
+  @@index([processingStatus])
+  @@map("media_assets")
+}
+
+model PanoramaAsset {
+  id               String           @id @default(uuid())
+  mediaAssetId     String           @unique @map("media_asset_id")
+  projectionType   ProjectionType   @default(EQUIRECTANGULAR) @map("projection_type")
+  tileManifestKey  String?          @map("tile_manifest_key")
+  processingStatus ProcessingStatus @default(COMPLETED) @map("processing_status")
+  processingError  String?          @map("processing_error") @db.Text
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+
+  mediaAsset       MediaAsset       @relation(fields: [mediaAssetId], references: [id], onDelete: Cascade)
+  scenes           Scene[]
+
+  @@map("panorama_assets")
+}
+
+model Building {
+  id          String   @id @default(uuid())
+  tourId      String   @map("tour_id")
+  name        String
+  description String?  @db.Text
+  sortOrder   Int      @default(0) @map("sort_order")
+
+  tour        Tour     @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  floors      Floor[]
+  scenes      Scene[]
+
+  @@index([tourId])
+  @@map("buildings")
+}
+
+model Floor {
+  id          String     @id @default(uuid())
+  buildingId  String     @map("building_id")
+  name        String
+  levelNumber Int        @default(1) @map("level_number")
+  sortOrder   Int        @default(0) @map("sort_order")
+
+  building    Building   @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  floorPlan   FloorPlan?
+  scenes      Scene[]
+
+  @@index([buildingId])
+  @@map("floors")
+}
+
+model FloorPlan {
+  id           String            @id @default(uuid())
+  floorId      String            @unique @map("floor_id")
+  mediaAssetId String            @map("media_asset_id")
+  width        Int
+  height       Int
+
+  floor        Floor             @relation(fields: [floorId], references: [id], onDelete: Cascade)
+  mediaAsset   MediaAsset        @relation(fields: [mediaAssetId], references: [id], onDelete: Cascade)
+  markers      FloorPlanMarker[]
+
+  @@map("floor_plans")
+}
+
+model FloorPlanMarker {
+  id          String    @id @default(uuid())
+  floorPlanId String    @map("floor_plan_id")
+  sceneId     String    @map("scene_id")
+  x           Float
+  y           Float
+
+  floorPlan   FloorPlan @relation(fields: [floorPlanId], references: [id], onDelete: Cascade)
+  scene       Scene     @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+
+  @@index([floorPlanId])
+  @@index([sceneId])
+  @@map("floor_plan_markers")
+}
+
+model Scene {
+  id              String         @id @default(uuid())
+  tourId          String         @map("tour_id")
+  panoramaAssetId String         @map("panorama_asset_id")
+  buildingId      String?        @map("building_id")
+  floorId         String?        @map("floor_id")
+  name            String
+  description     String?        @db.Text
+  sceneType       SceneType      @default(OUTDOOR) @map("scene_type")
+  initialYaw      Float          @default(0.0) @map("initial_yaw")
+  initialPitch    Float          @default(0.0) @map("initial_pitch")
+  initialFov      Float          @default(1.05) @map("initial_fov")
+  sortOrder       Int            @default(0) @map("sort_order")
+  isActive        Boolean        @default(true) @map("is_active")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  tour            Tour           @relation("TourScenes", fields: [tourId], references: [id], onDelete: Cascade)
+  panoramaAsset   PanoramaAsset  @relation(fields: [panoramaAssetId], references: [id], onDelete: Restrict)
+  building        Building?      @relation(fields: [buildingId], references: [id], onDelete: SetNull)
+  floor           Floor?         @relation(fields: [floorId], references: [id], onDelete: SetNull)
+
+  tourStartFor    Tour[]         @relation("TourStartScene")
+  sourceHotspots  Hotspot[]      @relation("SourceSceneHotspots")
+  targetHotspots  Hotspot[]      @relation("TargetSceneHotspots")
+  floorPlanMarkers FloorPlanMarker[]
+  views           TourView[]
+
+  @@index([tourId])
+  @@index([panoramaAssetId])
+  @@index([buildingId])
+  @@index([floorId])
+  @@map("scenes")
+}
+
+model Hotspot {
+  id            String      @id @default(uuid())
+  tourId        String      @map("tour_id")
+  sourceSceneId String      @map("source_scene_id")
+  targetSceneId String?     @map("target_scene_id")
+  type          HotspotType @default(NAVIGATION)
+  yaw           Float
+  pitch         Float
+  targetYaw     Float?      @map("target_yaw")
+  targetPitch   Float?      @map("target_pitch")
+  label         String?
+  icon          String?     @default("arrow-up")
+  contentJson   String?     @map("content_json") @db.Text
+  sortOrder     Int         @default(0) @map("sort_order")
+  isActive      Boolean     @default(true) @map("is_active")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+
+  tour          Tour        @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  sourceScene   Scene       @relation("SourceSceneHotspots", fields: [sourceSceneId], references: [id], onDelete: Cascade)
+  targetScene   Scene?      @relation("TargetSceneHotspots", fields: [targetSceneId], references: [id], onDelete: Cascade)
+
+  @@index([tourId])
+  @@index([sourceSceneId])
+  @@index([targetSceneId])
+  @@map("hotspots")
+}
+
+model TourPublication {
+  id           String    @id @default(uuid())
+  tourId       String    @map("tour_id")
+  version      Int       @default(1)
+  manifestKey  String?   @map("manifest_key")
+  snapshotJson String    @map("snapshot_json") @db.LongText
+  publishedBy  String    @map("published_by")
+  publishedAt  DateTime  @default(now()) @map("published_at")
+
+  tour         Tour      @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  publisher    User      @relation(fields: [publishedBy], references: [id], onDelete: Cascade)
+
+  @@index([tourId])
+  @@index([publishedBy])
+  @@map("tour_publications")
+}
+
+model SiteSetting {
+  id           String   @id @default(uuid())
+  settingKey   String   @unique @map("setting_key")
+  settingValue String   @map("setting_value") @db.Text
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("site_settings")
+}
+
+model PageSection {
+  id          String   @id @default(uuid())
+  pageKey     String   @map("page_key")
+  sectionKey  String   @map("section_key")
+  contentJson String   @map("content_json") @db.Text
+  sortOrder   Int      @default(0) @map("sort_order")
+  isActive    Boolean  @default(true) @map("is_active")
+
+  @@unique([pageKey, sectionKey])
+  @@map("page_sections")
+}
+
+model AuditLog {
+  id           String   @id @default(uuid())
+  actorId      String?  @map("actor_id")
+  action       String
+  entityType   String   @map("entity_type")
+  entityId     String?  @map("entity_id")
+  metadataJson String?  @map("metadata_json") @db.Text
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  actor        User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([actorId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model TourView {
+  id               String    @id @default(uuid())
+  tourId           String    @map("tour_id")
+  sceneId          String?   @map("scene_id")
+  visitorSessionId String?   @map("visitor_session_id")
+  viewedAt         DateTime  @default(now()) @map("viewed_at")
+
+  tour             Tour      @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  scene            Scene?    @relation(fields: [sceneId], references: [id], onDelete: SetNull)
+
+  @@index([tourId])
+  @@index([sceneId])
+  @@index([viewedAt])
+  @@map("tour_views")
+}
+
+model ExportJob {
+  id           String       @id @default(uuid())
+  tourId       String       @map("tour_id")
+  type         ExportType   @default(STANDALONE_ZIP)
+  status       ExportStatus @default(QUEUED)
+  progress     Int          @default(0)
+  errorMessage String?      @map("error_message") @db.Text
+  downloadUrl  String?      @map("download_url")
+  fileSize     Int?         @map("file_size")
+  fileName     String?      @map("file_name")
+  expiresAt    DateTime?    @map("expires_at")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  tour         Tour         @relation(fields: [tourId], references: [id], onDelete: Cascade)
+
+  @@index([tourId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("export_jobs")
+}
