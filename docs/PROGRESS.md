@@ -1,5 +1,18 @@
 # Progress Log
 
+## 7 November 2026 — Migrasi ke Supabase PostgreSQL & Deployment ke Vercel
+
+- **Skema & Database**:
+  - Berhasil beralih dari MySQL lokal ke Supabase PostgreSQL (`penxmostdecnzywvgxna` di region `ap-southeast-1`).
+  - `prisma/schema.prisma` diperbarui ke `provider = "postgresql"` dengan dukungan `DATABASE_URL` (connection pooler pgbouncer port 6543) dan `DIRECT_URL` (port 5432).
+  - Skema database (20 tabel, enum, relasi, dan foreign keys) berhasil disinkronisasi ke Supabase menggunakan `npx prisma db push`.
+  - Database Supabase berhasil di-seed dengan data awal lengkap (18 granular permissions, 4 RBAC roles: `SUPER_ADMIN`, `ADMIN`, `EDITOR`, `VIEWER`, serta akun default `superadmin@virtualtour.test` & `admin@virtualtour.test`).
+- **Build & CI/CD Vercel**:
+  - `package.json` ditambahkan skrip `"build": "prisma generate && next build"` dan `"postinstall": "prisma generate"` agar Prisma client otomatis ter-generate pada environment serverless Vercel.
+  - Halaman `src/app/page.tsx` ditambahkan `export const dynamic = 'force-dynamic'` guna mencegah kendala static pre-rendering saat build di pipeline Vercel.
+  - Seluruh 26 routes berhasil dikompilasi oleh Next.js 16 Turbo dan vercel build sukses diselesaikan dalam 59 detik: `Build Completed in /vercel/output [59s]`.
+  - Deployment output siap dan aktif di domain produksi Vercel.
+
 ## 7 November 2026 — Persiapan upload GitHub
 
 - Remote `origin` diarahkan ke https://github.com/ulx-23/virtual-tour-360.git dan branch utama diubah dari `master` menjadi `main`, dengan riwayat commit awal tetap dipertahankan.
