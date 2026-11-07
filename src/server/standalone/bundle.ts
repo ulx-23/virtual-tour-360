@@ -31,7 +31,7 @@ export interface SourceTour {
 export async function bundleStandaloneTour(tour: SourceTour, outputPath: string, options: {
   publicDir?: string; templateDir?: string; onProgress?: (percent: number) => Promise<void>;
 } = {}) {
-  const publicDir = await fsp.realpath(options.publicDir || path.join(process.cwd(), 'public'));
+  const publicDir = await fsp.realpath(/*turbopackIgnore: true*/ options.publicDir || path.join(process.cwd(), 'public'));
   const templateDir = options.templateDir || path.join(process.cwd(), 'src/server/templates/standalone');
   const pending = new Map<string, string | Buffer>();
   const localAsset = async (key: string, prefix: string) => {
@@ -98,7 +98,7 @@ export async function bundleStandaloneTour(tour: SourceTour, outputPath: string,
   pending.set('tour.json', Buffer.from(serialized));
   pending.set('tour-data.js', Buffer.from(`window.TOUR_DATA = ${serialized};\n`));
   for (const name of ['index.html', 'style.css', 'app.js', 'README.txt', 'vendor/marzipano.js', 'serve.cjs', 'Start tour.cmd']) {
-    pending.set(name, path.join(templateDir, name));
+    pending.set(name, path.join(/*turbopackIgnore: true*/ templateDir, name));
   }
   await options.onProgress?.(50);
   const integrity: Record<string, ArchiveFile> = {};

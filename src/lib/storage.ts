@@ -20,7 +20,7 @@ export class LocalStorageProvider implements IStorageProvider {
   }
 
   async save(buffer: Buffer, filename: string, subfolder = 'general'): Promise<StorageResult> {
-    const targetDir = path.join(this.baseDir, subfolder);
+    const targetDir = path.join(process.cwd(), 'public', 'uploads', subfolder);
     await fs.mkdir(targetDir, { recursive: true });
 
     const safeFilename = `${Date.now()}-${filename.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
