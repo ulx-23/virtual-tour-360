@@ -18,6 +18,8 @@ import { Badge } from '@/components/ui/Badge';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { LandingNavbar } from '@/components/landing/LandingNavbar';
 
+export const dynamic = 'force-dynamic';
+
 export default async function LandingPage() {
   // Fetch dynamic CMS settings and published tours from MySQL
   const [settingsList, publishedTours] = await Promise.all([
