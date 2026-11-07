@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -329,7 +329,7 @@ model TourPublication {
   tourId       String    @map("tour_id")
   version      Int       @default(1)
   manifestKey  String?   @map("manifest_key")
-  snapshotJson String    @map("snapshot_json") @db.LongText
+  snapshotJson String    @map("snapshot_json") @db.Text
   publishedBy  String    @map("published_by")
   publishedAt  DateTime  @default(now()) @map("published_at")
 
