@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Virtual Tour 360°</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+
+  <!-- WebGL Panorama Viewport -->
+  <div id="pano"></div>
+
+  <!-- Top Bar HUD -->
+  <div class="top-bar">
+    <div class="tour-info-card">
+      <h1 class="tour-title" id="tourTitle">Virtual Tour 360°</h1>
+      <div class="scene-subtitle">
+        <span class="scene-badge" id="sceneTypeBadge">OUTDOOR</span>
+        <span id="sceneTitle">Memuat scene...</span>
+      </div>
+    </div>
+    <div class="top-actions" id="topActions">
+      <!-- Dynamic badges or actions -->
+    </div>
+  </div>
+
+  <!-- Floor Plan Minimap Overlay (Optional) -->
+  <div class="minimap-overlay" id="minimapOverlay" style="display: none;">
+    <div class="minimap-title">
+      <span id="minimapFloorName">Denah Lokasi</span>
+      <button class="dock-btn" style="width:22px;height:22px;" id="closeMinimapBtn">✕</button>
+    </div>
+    <div class="minimap-canvas-wrapper" id="minimapWrapper">
+      <img id="minimapImg" class="minimap-img" src="" alt="Denah">
+      <div id="minimapMarkersContainer"></div>
+    </div>
+  </div>
+
+  <!-- Scene Drawer Tray -->
+  <div class="scene-drawer hidden" id="sceneDrawer">
+    <!-- Populated by app.js -->
+  </div>
+
+  <!-- Bottom Floating Dock -->
+  <div class="controls-dock">
+    <button class="dock-btn" id="btnZoomIn" title="Perbesar (Zoom In)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+    </button>
+    <button class="dock-btn" id="btnZoomOut" title="Perkecil (Zoom Out)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+    </button>
+    <button class="dock-btn" id="btnReset" title="Reset Pandangan">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+    </button>
+    <button class="dock-btn" id="btnAutorotate" title="Putar Otomatis">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polygon points="10 8 16 12 10 16 10 8"></polygon></svg>
+    </button>
+    <button class="dock-btn" id="btnGyro" title="Sensor Giroskop (Gerak HP)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+    </button>
+
+    <div class="dock-divider"></div>
+
+    <button class="dock-btn" id="btnToggleMinimap" title="Buka Denah Lantai" style="display: none;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon><line x1="8" y1="2" x2="8" y2="18"></line><line x1="16" y1="6" x2="16" y2="22"></line></svg>
+    </button>
+    <button class="dock-btn" id="btnToggleDrawer" title="Daftar Scene">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+    </button>
+    <button class="dock-btn" id="btnFullscreen" title="Layar Penuh">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+    </button>
+  </div>
+
+  <!-- Info Modal Dialog -->
+  <div class="info-modal-backdrop" id="infoModalBackdrop">
+    <div class="info-modal-card">
+      <h3 class="info-modal-title" id="infoModalTitle">Informasi Hotspot</h3>
+      <p class="info-modal-text" id="infoModalText"></p>
+      <div id="infoModalMedia"></div>
+      <button class="info-modal-close" id="infoModalClose">Tutup</button>
+    </div>
+  </div>
+
+  <!-- Runtime Scripts -->
+  <script src="./vendor/marzipano.js"></script>
+  <script src="./tour-data.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
+

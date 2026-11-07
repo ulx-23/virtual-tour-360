@@ -11,6 +11,7 @@ export interface SessionPayload {
   userId: string;
   email: string;
   name: string;
+  avatar?: string | null;
   roles: string[];
   permissions: string[];
 }
@@ -87,6 +88,7 @@ export async function fetchFullUserSession(userId: string): Promise<SessionPaylo
     userId: user.id,
     email: user.email,
     name: user.name,
+    avatar: user.avatar || null,
     roles,
     permissions: Array.from(permissionsSet),
   };

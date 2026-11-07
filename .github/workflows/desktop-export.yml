@@ -1,0 +1,43 @@
+name: Build offline Windows tour
+on:
+  workflow_dispatch:
+    inputs:
+      export_run_id:
+        description: Run ID in this repository containing the standalone-tour artifact
+        required: true
+      artifact_name:
+        description: Artifact containing one validated standalone ZIP
+        required: true
+        default: standalone-tour
+permissions:
+  contents: read
+  actions: read
+jobs:
+  package:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          run-id: ${{ inputs.export_run_id }}
+          github-token: ${{ github.token }}
+          path: incoming
+      - run: npm ci --cache "${{ runner.temp }}/npm-cache"
+      - shell: pwsh
+        run: |
+          $archives = @(Get-ChildItem incoming -Filter *.zip)
+          if ($archives.Count -ne 1) { throw 'Expected exactly one standalone ZIP' }
+          npm run export:desktop -- $archives[0].FullName desktop-build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - run: npm install
+        working-directory: desktop-build
+      - run: npm run package:win
+        working-directory: desktop-build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: VirtualTour-windows-portable
+          path: desktop-build/dist/VirtualTour-win32-x64/

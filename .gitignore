@@ -33,6 +33,13 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# local migration backups (may contain database rows and credentials)
+/.migration-backups/
+
+# Private uploads and generated exports / isolated offline QA output
+/public/uploads/
+/public/exports/
+
 # vercel
 .vercel
 

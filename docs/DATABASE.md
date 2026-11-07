@@ -1,4 +1,4 @@
-﻿# Database Specification
+# Database Specification
 ## Virtual Tour 360° — MySQL & Prisma Schema
 
 ### 1. Database Overview
@@ -16,10 +16,24 @@
 - MediaAsset 1:1 PanoramaAsset and 1:N Scene
 - Tour 1:N TourPublication (snapshots)
 - Tour 1:N TourView (visitor analytics)
+- Tour 1:N ExportJob (asynchronous export jobs & downloads)
 - AuditLog for administrative audit trails
 - SiteSetting and PageSection for Dynamic CMS
 
 ### 3. Circular Reference Handling
-- 	ours.start_scene_id references scenes.id (nullable, onDelete: SetNull).
-- scenes.tour_id references 	ours.id (onDelete: Cascade).
+- tours.start_scene_id references scenes.id (nullable, onDelete: SetNull).
+- scenes.tour_id references tours.id (onDelete: Cascade).
 - This design prevents circular deadlock on deletion.
+
+### 4. Export & Job System Schema (`export_jobs`)
+- `id` (VARCHAR(36) UUID Primary Key)
+- `tour_id` (VARCHAR(36) Foreign Key -> `tours.id` ON DELETE CASCADE)
+- `type` (ENUM: `STANDALONE_ZIP`, `PROJECT_BACKUP`, `ORIGINAL_PANORAMAS`)
+- `status` (ENUM: `QUEUED`, `PROCESSING`, `COMPLETED`, `FAILED`)
+- `progress` (INT DEFAULT 0, representing 0-100%)
+- `error_message` (TEXT NULL)
+- `download_url` (VARCHAR(255) NULL)
+- `file_name` (VARCHAR(255) NULL)
+- `file_size` (INT NULL)
+- `expires_at` (DATETIME NULL, 24-hour retention window)
+- `created_at`, `updated_at` (DATETIME)

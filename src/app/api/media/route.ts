@@ -25,3 +25,22 @@ export async function GET(req: NextRequest) {
     );
   }
 }
+
+export async function DELETE(req: NextRequest) {
+  const auth = await authorizeUser('media.delete');
+  if (!auth.authorized) return auth.response;
+
+  try {
+    const result = await MediaService.cleanupUnusedMedia();
+    return NextResponse.json({
+      success: true,
+      message: result.message,
+      data: { deletedCount: result.deletedCount },
+    });
+  } catch (error: any) {
+    return NextResponse.json(
+      { success: false, error: error.message || 'Gagal membersihkan media yang tidak terpakai' },
+      { status: 500 }
+    );
+  }
+}

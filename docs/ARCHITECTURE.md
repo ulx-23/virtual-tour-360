@@ -1,4 +1,4 @@
-﻿# System Architecture
+# System Architecture
 ## Virtual Tour 360° — Interactive Tour Builder
 
 ### 1. Technology Stack
@@ -35,3 +35,50 @@
   - Pitch: Vertical elevation [-PI/2, PI/2].
   - FOV: Field of view in radians (default ~1.05 rad / 60 deg).
 - Coordinates on floor plans are **normalized** from 0.0 to 1.0 (X, Y relative to image dimensions).
+
+---
+
+### 4. Virtual Tour Merger & Exporter Architecture
+
+```
+                  ┌──────────────────────────────────────────────┐
+                  │          Admin Tour Hub Dashboard            │
+                  └───────┬───────────────────────────────┬──────┘
+                          │                               │
+             Multi-Scene Batch Creation            Export / Backup
+                          │                               │
+                          ▼                               ▼
+                 ┌─────────────────┐             ┌─────────────────┐
+                 │SceneMergerService│            │  ExportService  │
+                 └────────┬────────┘             └────────┬────────┘
+                          │                               │
+                 Batch Scene Generation          Asynchronous Jobs
+                          │                               │
+                          ▼                               ▼
+                 ┌─────────────────┐             ┌─────────────────┐
+                 │  MySQL (Prisma) │◄────────────┤   ExportJob     │
+                 │ scenes, hotspots│             │ QUEUED->PROCESS │
+                 └─────────────────┘             └────────┬────────┘
+                                                          │
+                                     ┌────────────────────┴───────────────────┐
+                                     ▼                                        ▼
+                         ┌───────────────────────┐               ┌────────────────────────┐
+                         │  Standalone Web Tour  │               │   Project Backup ZIP   │
+                         │   - index.html        │               │   - backup-manifest    │
+                         │   - vendor/marzipano  │               │   - panoramas/         │
+                         │   - tour-data.js      │               │   - floor-plans/       │
+                         │   - panoramas/*.webp  │               │   (.vtbackup.zip)      │
+                         └───────────────────────┘               └────────────────────────┘
+```
+
+#### 4.1 Standalone Offline Web Engine
+- **Self-Contained**: Employs Marzipano WebGL runtime locally copied to `./vendor/marzipano.js`.
+- **Zero-Dependency**: No Node.js, Next.js, or MySQL server required at runtime.
+- **Relative Path Resolution**: All asset URLs (`./panoramas/...`, `./floor-plans/...`) are strictly relative.
+- **Data Manifest**: Tour data serialized to `window.TOUR_DATA = { ... }` in `tour-data.js` to ensure universal compatibility under both `http://` and `file://` protocols.
+
+#### 4.2 Backup & Restore Engine
+- **Zip Slip Defense**: Inspects all entry paths against traversal sequences (`..`, `/`, `\`).
+- **Zip Bomb Defense**: Enforces a strict 250 MB max uncompressed ceiling.
+- **ID Remapping**: Transparently assigns fresh UUIDs to all imported entities while accurately remapping foreign keys (`targetSceneId`, `startSceneId`, `buildingId`, `floorId`).
+- **Collision Handling**: Automatically creates non-colliding slugs (`${slug}-imported`).

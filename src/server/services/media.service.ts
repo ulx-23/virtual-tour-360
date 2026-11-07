@@ -136,4 +136,112 @@ export class MediaService {
       totalPages: Math.ceil(total / limit),
     };
   }
+
+  static async deleteMedia(mediaId: string, force = false): Promise<{ success: boolean; message?: string; error?: string }> {
+    const media = await prisma.mediaAsset.findUnique({
+      where: { id: mediaId },
+      include: {
+        panoramaAsset: {
+          include: {
+            scenes: {
+              select: {
+                id: true,
+                name: true,
+                tour: { select: { title: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!media) {
+      return { success: false, error: 'Berkas media tidak ditemukan' };
+    }
+
+    const linkedScenes = media.panoramaAsset?.scenes || [];
+    if (linkedScenes.length > 0 && !force) {
+      const scene = linkedScenes[0];
+      return {
+        success: false,
+        error: `Media ini sedang digunakan oleh scene "${scene.name}" pada tur "${scene.tour.title}". Harap hapus atau ganti scene tersebut terlebih dahulu jika ingin menghapus foto panorama ini.`,
+      };
+    }
+
+    // If force is true, delete linked scenes
+    if (linkedScenes.length > 0 && force) {
+      for (const sc of linkedScenes) {
+        await prisma.scene.delete({ where: { id: sc.id } });
+      }
+    }
+
+    // Unset any tour cover references
+    await prisma.tour.updateMany({
+      where: { coverMediaId: mediaId },
+      data: { coverMediaId: null },
+    });
+
+    // Delete files from storage
+    if (media.storageKey) {
+      await storage.delete(media.storageKey);
+    }
+    if (media.thumbnailKey) {
+      await storage.delete(media.thumbnailKey);
+    }
+
+    // Delete database records
+    if (media.panoramaAsset) {
+      await prisma.panoramaAsset.delete({ where: { id: media.panoramaAsset.id } });
+    }
+    await prisma.mediaAsset.delete({ where: { id: mediaId } });
+
+    return { success: true, message: 'Berkas media berhasil dihapus secara permanen' };
+  }
+
+  static async cleanupUnusedMedia(): Promise<{ success: boolean; deletedCount: number; message: string }> {
+    // Find all media assets not linked to any active scene
+    const unusedMedia = await prisma.mediaAsset.findMany({
+      where: {
+        OR: [
+          { panoramaAsset: null },
+          {
+            panoramaAsset: {
+              scenes: {
+                none: {},
+              },
+            },
+          },
+        ],
+      },
+      select: {
+        id: true,
+        storageKey: true,
+        thumbnailKey: true,
+        panoramaAsset: {
+          select: { id: true },
+        },
+      },
+      take: 200,
+    });
+
+    let deletedCount = 0;
+    for (const item of unusedMedia) {
+      try {
+        if (item.storageKey) await storage.delete(item.storageKey);
+        if (item.thumbnailKey) await storage.delete(item.thumbnailKey);
+
+        if (item.panoramaAsset) {
+          await prisma.panoramaAsset.delete({ where: { id: item.panoramaAsset.id } });
+        }
+        await prisma.mediaAsset.delete({ where: { id: item.id } });
+        deletedCount++;
+      } catch {}
+    }
+
+    return {
+      success: true,
+      deletedCount,
+      message: `Berhasil membersihkan ${deletedCount} file media yang tidak digunakan`,
+    };
+  }
 }

@@ -80,6 +80,9 @@ export class PublishingService {
           targetYaw: h.targetYaw,
           targetPitch: h.targetPitch,
           targetSceneId: h.targetSceneId,
+          targetSceneName: h.targetSceneId
+            ? tour.scenes.find((target) => target.id === h.targetSceneId)?.name || null
+            : null,
           label: h.label,
           icon: h.icon,
           contentJson: h.contentJson ? JSON.parse(h.contentJson) : null,

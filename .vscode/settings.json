@@ -1,0 +1,5 @@
+{
+  "prisma.pinToPrisma6": true,
+  "css.lint.unknownAtRules": "ignore",
+  "css.lint.vendorPrefix": "ignore"
+}

@@ -41,6 +41,10 @@ export class HotspotService {
 
     // Bidirectional return hotspot creation
     if (input.createReturnHotspot && input.targetSceneId && input.type === 'NAVIGATION') {
+      const sourceScene = await prisma.scene.findUnique({
+        where: { id: input.sourceSceneId },
+        select: { name: true },
+      });
       // Calculate opposite yaw: (-PI to PI)
       let returnYaw = input.yaw + Math.PI;
       if (returnYaw > Math.PI) returnYaw -= 2 * Math.PI;
@@ -53,7 +57,7 @@ export class HotspotService {
           type: 'NAVIGATION',
           yaw: returnYaw,
           pitch: 0.0,
-          label: `Kembali ke ${hotspot.label || 'Sebelumnya'}`,
+          label: `Kembali ke ${sourceScene?.name || 'scene sebelumnya'}`,
           icon: 'arrow-down',
         },
       });
